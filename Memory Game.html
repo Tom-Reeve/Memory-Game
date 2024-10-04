@@ -1,0 +1,313 @@
+<!DOCTYPE HTML>
+<HTML>
+    <head>
+        <title>Memory Game v2</title>
+        <style>
+            #page {
+                outline: 1px solid;
+
+                display: block;
+                position: absolute;
+                height: auto;
+
+                top: 0;
+                bottom: 0;
+                left: 0;
+                right: 0;
+
+                margin-top: 10px;
+                margin-bottom: 10px;
+                margin-left: 10px;
+                margin-right: 10px;
+            }
+            #pageCenter {
+                width: 100%;
+                height: 100%;
+
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            #game {
+                width: 600px;
+                height: 750px;
+
+                position: relative;
+            }
+            #tileContainer {
+                width: 600px;
+                height: 600px;
+            }
+            #infoContainer {
+                width: 600px;
+                height: 100px;
+
+                position: absolute;
+                bottom: 0;
+
+                background-color: #D3D3D3
+            }
+            .infoWrapper {
+                width: calc(100% / 3);
+                height: 100%;
+
+                float: left;
+            }
+            .align {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .highScore {
+                width: 100%;
+                height: 50%;
+
+                white-space: pre;
+            }
+            .buttonContainer {
+                width: 100%;
+                height: 50%;
+
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .startButton {
+                width: 90%;
+                height: 80%;
+            }
+            .tile {
+                float: left;
+            }
+            .tileFour {
+                width: 50%;
+                height: 50%;
+            }
+            .tileNine {
+                width: calc(100% / 3);
+                height: calc(100% / 3);
+            }
+        </style>
+    </head>
+    <body>
+        <div id="page">
+            <div id="pageCenter">
+                <div id="game">
+                    <div id="tileContainer">
+                    </div>
+                    <div id="infoContainer">
+                        <div class="infoWrapper align">
+                            <div id="roundNumberDiv">Round Number: <span id="roundNumber">0</span></div>
+                        </div>
+                        <div class="infoWrapper">
+                            <div class="buttonContainer">
+                                <button id="startButtonFour" class="startButton">Start (4 Tiles)</button>
+                            </div>
+                            <div class="buttonContainer">
+                                <button id="startButtonNine" class="startButton">Start (9 Tiles)</button>
+                            </div>
+                        </div>
+                        <div class="infoWrapper">
+                            <div id="highScoreFourDiv" class="highScore align">Four Tile High Score: <span id="highScoreFour">0</span></div>
+                            <div id="highScoreNineDiv" class="highScore align">Nine Tile High Score: <span id="highScoreNine">0</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            const startButtonFour = document.getElementById("startButtonFour");
+            const startButtonNine = document.getElementById("startButtonNine");
+            const roundNumber     = document.getElementById("roundNumber");
+            
+            const highScoreFourSpan   = document.getElementById("highScoreFour");
+            const highScoreNineSpan   = document.getElementById("highScoreNine");
+
+            const colors = ["red", "yellow", "blue", "green", "black", "orange", "grey", "pink", "purple"];
+            
+            let tiles = [];
+            let sequence = [];
+            
+            let sequencePlaying = true;
+
+            let currentRoundNumber;
+
+            let index = 0;
+
+            let highScoreFour = localStorage.highScoreFour ? localStorage.highScoreFour : 0;
+            highScoreFourSpan.innerHTML = highScoreFour;
+
+            let highScoreNine = localStorage.highScoreNine ? localStorage.highScoreNine : 0;
+            highScoreNineSpan.innerHTML = highScoreNine;
+            
+
+            startButtonFour.addEventListener("click", function(e) {
+                newGame(4);
+            });
+            startButtonNine.addEventListener("click", function(e) {
+                newGame(9);
+            });
+
+            function newGame(roundCount) {
+                let existingTiles = document.getElementsByClassName("tile");
+                for (let i = existingTiles.length - 1; i >= 0 ; i--) {
+                    existingTiles[i].remove();
+                }
+
+                tiles = [];
+                
+                for (let i = 0 ; i < roundCount ; i++) {
+                    let newTile = document.createElement("div");
+                    newTile.color = colors[i];
+
+                    let tileClass = roundCount === 4 ? "tileFour" : "tileNine"
+                    newTile.setAttribute("class", "tile " + tileClass);
+
+                    newTile.addEventListener("click", function(e) {
+                        if (sequencePlaying) {
+                            return;
+                        }
+
+                        checkClickedTile(this.color, sequence[0]);
+                    });
+
+                    tiles.push(newTile);
+                                             
+                    let tileContainer = document.getElementById("tileContainer");
+                    tileContainer.appendChild(newTile);
+                }
+                sequence = [];
+
+                currentRoundNumber = 1;
+
+                sequencePlaying = true;
+
+                index = 0;
+
+                newRound(currentRoundNumber, roundCount);
+
+                startButtonFour.disabled = true;
+                startButtonNine.disabled = true;
+            }
+
+            function newRound(currentRoundNumber, tileCount) {
+                roundNumber.innerHTML = currentRoundNumber;
+
+                //sequence = generateSequence(currentRoundNumber, tileCount);
+
+                let colorsToUse = colors.slice(0, tileCount);
+                let randomColor = colorsToUse[Math.floor(Math.random() * colorsToUse.length)];
+
+                sequence.push(randomColor);
+
+                index = 0;
+
+                runSequence(sequence, 0);
+            }
+
+            function generateSequence(length, tileCount) {
+                let colorsToUse = colors.slice(0, tileCount);
+
+                let tempSequence = [];
+                for (let i = 0 ; i < length ; i++) {
+                    let randomColor = colorsToUse[Math.floor(Math.random() * colorsToUse.length)];
+                    tempSequence.push(randomColor);
+                }
+
+                return tempSequence;
+            }
+
+            function runSequence(sequence, index) {
+                if (index >= sequence.length) {
+                    sequencePlaying = false;
+
+                    for (let i = 0 ; i < tiles.length ; i++) {
+                        tiles[i].style.backgroundColor = colors[i];
+                    }
+
+                    return;
+                }
+
+                sequencePlaying = true;
+
+                for (let i = 0 ; i < tiles.length ; i++) {
+                    tiles[i].style.backgroundColor = "white";
+                }
+
+                let nextColorInSequence = sequence[index];
+                let tileToColor = tiles[colors.indexOf(nextColorInSequence)];
+
+                tileToColor.style.backgroundColor = nextColorInSequence;
+
+                setTimeout(() => {
+                    tileToColor.style.backgroundColor = "white";
+
+                    setTimeout(() => {
+                        runSequence(sequence, index + 1);
+                    }, 250);
+                }, 1000);
+            }
+
+            function checkClickedTile(tileColor) {
+                if (sequencePlaying) {
+                    return;
+                }
+                if (tileColor === sequence[index]) {
+                    for (let i = 0 ; i < tiles.length ; i++) {
+                        tiles[i].style.backgroundColor = "green";
+                    }
+                    setTimeout(() => {
+                        for (let i = 0 ; i < tiles.length ; i++) {
+                            tiles[i].style.backgroundColor = colors[i];
+                        }
+                    }, 250);
+
+                    //sequence.shift();
+
+                    index++
+
+                    if (sequence.length === index) {
+                        
+                        let tileCount = tiles.length;
+                        if (currentRoundNumber > highScoreFour && tileCount === 4) {
+                            highScoreFour = currentRoundNumber;
+                            localStorage.highScoreFour = currentRoundNumber;
+                            highScoreFourSpan.innerHTML = currentRoundNumber;
+                        }
+                        if (currentRoundNumber > highScoreNine && tileCount === 9) {
+                            highScoreNine = currentRoundNumber;
+                            localStorage.highScoreNine = currentRoundNumber;
+                            highScoreNineSpan.innerHTML = currentRoundNumber;
+                        }
+                        
+                        currentRoundNumber++;
+                        
+                        setTimeout(() => {
+                            newRound(currentRoundNumber, tileCount);
+                        }, 500);
+                    }
+                } else {
+                    sequencePlaying = true;
+
+                    for (let i = 0 ; i < tiles.length ; i++) {
+                        tiles[i].style.backgroundColor = sequence[index];
+                    }
+
+                    startButtonFour.disabled = false;
+                    startButtonNine.disabled = false;
+                }
+            }
+
+            document.addEventListener("keypress", function(e) {
+                let tileCount = tiles.length;
+                let updatedKeyCode = e.keyCode - 49;
+                if (tileCount === 4 && e.keyCode >= 49 && e.keyCode <= 52) {
+                    checkClickedTile(tiles[updatedKeyCode].color);
+                }
+                if (tileCount === 9 && e.keyCode >= 49 && e.keyCode <= 57) {
+                    checkClickedTile(tiles[updatedKeyCode].color);
+                }
+            });
+        </script>
+    </body>
+</HTML>
